@@ -65,7 +65,6 @@ func main() {
 	orderHandler := handler.NewOrderHandler(cache)
 	orderHandler.RegisterRoutes(router)
 
-	//router.PathPrefix("/").Handler(http.FileServer(http.Dir("./static/")))
 
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
     	http.ServeFile(w, r, "./static/index.html")
@@ -104,4 +103,5 @@ func main() {
 	}
 	
 	log.Println("Сервер вышел из строя")
+
 }
