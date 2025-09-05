@@ -1,0 +1,173 @@
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: otaskpostgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-orders}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - wb
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"] 
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - wb
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--list", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wb
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wbtask
+    ports:
+      - "8080:8080"
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-orders}
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy 
+    restart: unless-stopped
+    networks:
+      - wb
+
+  migrate:
+    image: migrate/migrate
+    container_name: migrate
+    volumes:
+      - ./migrations:/migrations
+    command: ["-path", "./migrations", "-database",  "${POSTGRES_STRING}", "up" ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - wb
+
+volumes:
+  postgres_data:
+
+networks:
+  wb:
+    driver: bridge
+
+# version: '3.8'
+
+# postgres:
+#     image: postgres:15
+#     container_name: otaskpostgres
+#     environment:
+#       POSTGRES_USER: ${POSTGRES_USER}
+#       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+#       POSTGRES_DB: ${POSTGRES_DB}
+#     ports:
+#       - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+#     volumes:
+#       -  ./data:/var/lib/postgresql/data
+#     healthcheck:
+#       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d postgres"]
+#       interval: 10s
+#       timeout: 5s
+#       retries: 7
+#     restart: unless-stopped
+#     networks:
+#       otask_network:
+
+
+
+# app:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     container_name: wbtask
+#     ports:
+#       - "${PORT}:${PORT}"
+#     environment:
+#       USE_IN_MEMORY: "false"
+#     depends_on:
+#       postgres:
+#         condition: service_healthy
+#     restart: unless-stopped
+#     networks:
+#       - wb
+
+# services:
+#   zookeeper:
+#     image: confluentinc/cp-zookeeper:7.4.0
+#     environment:
+#       ZOOKEEPER_CLIENT_PORT: 2181
+#       ZOOKEEPER_TICK_TIME: 2000
+#     ports:
+#       - "2181:2181"
+#     networks:
+#       - wb
+
+#   kafka:
+#     image: confluentinc/cp-kafka:7.4.0
+#     depends_on:
+#       - zookeeper
+#     ports:
+#       - "9092:9092"
+#     environment:
+#       KAFKA_BROKER_ID: 1
+#       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+#       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+#       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+#       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+#       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+#     networks:
+#       - wb
+
+# networks:
+#   wb:
