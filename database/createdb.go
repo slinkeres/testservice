@@ -273,33 +273,3 @@ func (d *Database) GetAllOrders() (map[string]model.Order, error) {
 	return orders, nil
 }
 
-
-
-// func (d *Database) GetAllOrders() (map[string]model.Order, error) {
-// 	orders := make(map[string]model.Order)
-	
-	
-// 	rows, err := d.db.Query("SELECT order_uid FROM orders")
-// 	if err != nil {
-// 		return nil, fmt.Errorf(" Не удалось получить id заказа: %v", err)
-// 	}
-// 	defer rows.Close()
-
-// 	for rows.Next() {
-// 		var uid string
-// 		if err := rows.Scan(&uid); err != nil {
-// 			log.Printf("Не удалось засканить ID заказа: %v", err)
-// 			continue
-// 		}
-		
-// 		order, err := d.GetOrder(uid)
-// 		if err != nil {
-// 			log.Printf("Не удалось получить заказ %s: %v", uid, err)
-// 			continue
-// 		}
-		
-// 		orders[uid] = order
-// 	}
-
-// 	return orders, nil
-// }
