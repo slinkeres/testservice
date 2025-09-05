@@ -48,18 +48,18 @@ order-service/
 
 ```bash
 git clone https://github.com/slinkeres/wbservice
-
+```
 2. Запустите все сервисы с помощью Docker Compose:
 
 ```bash
 docker-compose up -d
-
+```
 3. Сервис будет доступен по адресу: http://localhost:8080
 
 4. Отправьте тестовое сообщение в Kafka (из корневой директории)
 ```bash
 go run cmd/producer/main.go
-
+```
 5. Откройте веб-интерфейс и введите ID заказа b563feb7b2b84b6test
 
 
